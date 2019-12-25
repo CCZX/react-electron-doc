@@ -1,5 +1,5 @@
 import React from 'react';
-import './App.css';
+import './App.scss';
 import 'bootstrap/dist/css/bootstrap.min.css'
 import FileSearch from './components/FileSearch'
 import FileList from './components/FileList'
@@ -33,9 +33,9 @@ function App() {
           <TabList
             files={defaultFiles}
             activeId="1"
-            unSaveIds={[]}
-            handleTabClick={(id) => {console.log(id)}}
-            handleTabClose={(id) => {console.log(id)}}
+            unSaveIds={['1', '3']}
+            handleTabClick={(id) => {console.log('click', id)}}
+            handleTabClose={(id) => {console.log('close', id)}}
           />
         </div>
       </div>
