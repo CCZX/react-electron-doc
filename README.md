@@ -16,5 +16,5 @@ npm install
 本地启动开发环境
 
 ```bash
-npm start
+npm run dev
 ```
