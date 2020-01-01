@@ -9,18 +9,70 @@ import FileList from './components/FileList'
 import BottomBtn from './components/BottomBtn'
 import TabList from './components/TabList'
 import defaultFiles from './utils/defaultFiles'
-import { file } from '@babel/types';
 
 function App() {
   const [files, setFiles] = useState(defaultFiles)
   const [activeFileID, setActiveFileID] = useState('')
-  const [opendFileIDs, setOpendFileIDs] = useState([])
+  const [openedFileIDs, setOpenedFileIDs] = useState([])
   const [unSaveFilesIDs, setUnSaveFilesIDs] =useState([])
 
-  const opendFiles = opendFileIDs.map(openID => {
+  const openedFiles = openedFileIDs.map(openID => {
     return files.find(file => file.id === openID)
   })
   const activeFile = files.find(file => file.id === activeFileID)
+
+  /**
+   * file list handle function
+   */
+  // handle flie list item onclick
+  const fileClick = (fileID) => {
+    // set currentActivefiel
+    setActiveFileID(fileID)
+    // if openedFileIDs not inclueds fileID then add new fileID to openFileIDs
+    // setOpenedFileIDs(Array.from(new Set([...openedFileIDs, fileID])))
+    if (!openedFileIDs.includes(fileID)) {
+      setOpenedFileIDs([...openedFileIDs, fileID])
+    }
+  }
+
+  /**
+   * tab list handle function
+   */
+  // handle tab list item onclick
+  const tabClick = (fileID) => {
+    setActiveFileID(fileID)
+  }
+  // handle tab list item close
+  const tabClose = (fileID) => {
+    // remove current fileid from openedfiledids
+    const newopenedFileIDs = openedFileIDs.filter(id => fileID !== id)
+    setOpenedFileIDs(newopenedFileIDs)
+    if (activeFileID === fileID) {
+      if (newopenedFileIDs.length > 0) {
+        setActiveFileID(newopenedFileIDs[0])
+      } else {
+        setActiveFileID('')
+      }
+    }
+  }
+
+  /**
+   * file change
+   */
+  const fileChange = (id, val) => {
+    // loop files find a file that file.id equal id and update the file body
+    const newFiles = files.map(file => {
+      if (file.id === id) {
+        file.body = val
+      }
+      return file
+    })
+    setFiles(newFiles)
+    // update unSaveIDs
+    if (!unSaveFilesIDs.includes(id)) {
+      setUnSaveFilesIDs([...unSaveFilesIDs, id])
+    }
+  }
 
   return (
     <div className="App container-fluid px-0">
@@ -29,7 +81,7 @@ function App() {
           <FileSearch title="我的云文档" onFileSearch={(val) => {console.log(val)}} />
           <FileList
             files={files}
-            onFileClick={(id) => {console.log(id)}}
+            onFileClick={fileClick}
             onFileDelete={(id) => {console.log(id)}}
             onSaveEdit={(id, title) => {console.log(id, title)}}
           />
@@ -48,15 +100,16 @@ function App() {
               选择或者创建新的文章
             </div> : <>
               <TabList
-                files={opendFiles}
+                files={openedFiles}
                 activeId={activeFileID}
                 unSaveIds={unSaveFilesIDs}
-                handleTabClick={(id) => {console.log('click', id)}}
-                handleTabClose={(id) => {console.log('close', id)}}
+                handleTabClick={tabClick}
+                handleTabClose={tabClose}
               />
               <SimpleMDE
+                key={activeFile && activeFile.id}
                 value={activeFile && activeFile.body}
-                onChange={val => console.log(val)}
+                onChange={val => fileChange(activeFile.id, val)}
                 options={{
                   minHeight: '515px'
                 }}
