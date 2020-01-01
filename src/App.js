@@ -1,6 +1,7 @@
 import React, {useState} from 'react'
 import { faPlus, faFileImport } from '@fortawesome/free-solid-svg-icons'
 import SimpleMDE from 'react-simplemde-editor'
+import uuidv4 from 'uuid/v4'
 import './App.scss'
 import 'bootstrap/dist/css/bootstrap.min.css'
 import 'easymde/dist/easymde.min.css'
@@ -9,31 +10,14 @@ import FileList from './components/FileList'
 import BottomBtn from './components/BottomBtn'
 import TabList from './components/TabList'
 import defaultFiles from './utils/defaultFiles'
+import { updateArrayItemById } from './utils/common'
 
 function App() {
-  const [files, setFiles] = useState(defaultFiles)
+  const [files, setFiles] = useState(defaultFiles) // [{}, {}]
   const [activeFileID, setActiveFileID] = useState('')
   const [openedFileIDs, setOpenedFileIDs] = useState([])
   const [unSaveFilesIDs, setUnSaveFilesIDs] =useState([])
-
-  const openedFiles = openedFileIDs.map(openID => {
-    return files.find(file => file.id === openID)
-  })
-  const activeFile = files.find(file => file.id === activeFileID)
-
-  /**
-   * file list handle function
-   */
-  // handle flie list item onclick
-  const fileClick = (fileID) => {
-    // set currentActivefiel
-    setActiveFileID(fileID)
-    // if openedFileIDs not inclueds fileID then add new fileID to openFileIDs
-    // setOpenedFileIDs(Array.from(new Set([...openedFileIDs, fileID])))
-    if (!openedFileIDs.includes(fileID)) {
-      setOpenedFileIDs([...openedFileIDs, fileID])
-    }
-  }
+  const [searchedFiles, setSearchedFiles] = useState([]) // represent searched files to avoid conflict whit global files
 
   /**
    * tab list handle function
@@ -57,16 +41,49 @@ function App() {
   }
 
   /**
+   * file list handle function
+   */
+  // handle flie list item onclick
+  const fileClick = (fileID) => {
+    // set currentActivefiel
+    setActiveFileID(fileID)
+    console.log(fileID)
+    // if openedFileIDs not inclueds fileID then add new fileID to openFileIDs
+    // setOpenedFileIDs(Array.from(new Set([...openedFileIDs, fileID])))
+    if (!openedFileIDs.includes(fileID)) {
+      setOpenedFileIDs([...openedFileIDs, fileID])
+    }
+  }
+  // handle file list item onDelete
+  const fileDelete = (fileID) => {
+    const newFiles = files.filter(file => file.id !== fileID)
+    console.log(newFiles)
+    setFiles(newFiles)
+    // close tab if opened
+    tabClose(fileID)
+  }
+  const updateFileName = (fileID, title) => {
+    // const newFiles = updateArrayItemById(files, fileID, 'title', title)
+    const newFiles = files.map(file => {
+      if (file.id === fileID) {
+        file.title = title
+        file.isNew = false
+      }
+      return file
+    })
+    setFiles(newFiles)
+  }
+  const fileSearch = (keyword) => {
+    const newFiles = files.filter(file => file.title.includes(keyword))
+    setSearchedFiles(newFiles)
+  }
+
+  /**
    * file change
    */
   const fileChange = (id, val) => {
     // loop files find a file that file.id equal id and update the file body
-    const newFiles = files.map(file => {
-      if (file.id === id) {
-        file.body = val
-      }
-      return file
-    })
+    const newFiles = updateArrayItemById(files, id, 'body', val)
     setFiles(newFiles)
     // update unSaveIDs
     if (!unSaveFilesIDs.includes(id)) {
@@ -74,20 +91,44 @@ function App() {
     }
   }
 
+  const createNewFile = () => {
+    const newID = uuidv4()
+    const newFiles = [
+      ...files,
+      {
+        id: newID,
+        title: '',
+        body: '## 请输入MarkDown格式文件',
+        createAt: new Date().getTime(),
+        isNew: true
+      }
+    ]
+    setFiles(newFiles)
+  }
+
+  /**
+   * 根据state的值生成相应file
+   */
+  const openedFiles = openedFileIDs.map(openID => {
+    return files.find(file => file.id === openID)
+  })
+  const activeFile = files.find(file => file.id === activeFileID)
+
   return (
     <div className="App container-fluid px-0">
       <div className="row no-gutters">
         <div className="col-3 left-panel">
-          <FileSearch title="我的云文档" onFileSearch={(val) => {console.log(val)}} />
+          <FileSearch title="我的云文档" onFileSearch={fileSearch} />
           <FileList
-            files={files}
+            // files={files}
+            files={searchedFiles.length > 0 ? searchedFiles : files}
             onFileClick={fileClick}
-            onFileDelete={(id) => {console.log(id)}}
-            onSaveEdit={(id, title) => {console.log(id, title)}}
+            onFileDelete={fileDelete}
+            onSaveEdit={updateFileName}
           />
           <div className="row no-gutters button-group">
             <div className="col">
-              <BottomBtn text="新建" colorClass="btn-primary" icon={faPlus} handleClick={() => {}} />
+              <BottomBtn text="新建" colorClass="btn-primary" icon={faPlus} handleClick={createNewFile} />
             </div>
             <div className="col">
               <BottomBtn text="导入" colorClass="btn-success" icon={faFileImport} handleClick={() => {}} />
@@ -110,9 +151,9 @@ function App() {
                 key={activeFile && activeFile.id}
                 value={activeFile && activeFile.body}
                 onChange={val => fileChange(activeFile.id, val)}
-                options={{
-                  minHeight: '515px'
-                }}
+                // options={{
+                //   minHeight: '100vh'
+                // }}
               />
             </>
           }
