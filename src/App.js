@@ -10,14 +10,20 @@ import FileList from './components/FileList'
 import BottomBtn from './components/BottomBtn'
 import TabList from './components/TabList'
 import defaultFiles from './utils/defaultFiles'
-import { updateArrayItemById } from './utils/common'
+import { flatArr, hashMapToArr } from './utils/common'
+import fileHelper from './utils/fsOperation'
+
+const { join } = window.require('path')
+const { remote } = window.require('electron')
 
 function App() {
-  const [files, setFiles] = useState(defaultFiles) // [{}, {}]
+  const [files, setFiles] = useState(flatArr(defaultFiles)) // [{}, {}]
   const [activeFileID, setActiveFileID] = useState('')
   const [openedFileIDs, setOpenedFileIDs] = useState([])
   const [unSaveFilesIDs, setUnSaveFilesIDs] =useState([])
   const [searchedFiles, setSearchedFiles] = useState([]) // represent searched files to avoid conflict whit global files
+  const filesArr = hashMapToArr(files)
+  const savedLocation = remote.app.getPath('documents')
 
   /**
    * tab list handle function
@@ -55,17 +61,17 @@ function App() {
   }
   // handle file list item onDelete
   const fileDelete = (fileID) => {
-    const newFiles = files.filter(file => file.id !== fileID)
-    setFiles(newFiles)
+    delete files[fileID]
+    setFiles(files)
     // close tab if opened
     tabClose(fileID)
   }
-  const updateFileName = (fileID, title) => {
-    const newFiles = updateArrayItemById(files, fileID, {title: title, isNew: false})
-    setFiles(newFiles)
+  const updateFileName = (fileID, title, isNew) => {
+    const modifiedFile = {...files[fileID], title, isNew: false}
+    setFiles({...files, [fileID]: modifiedFile})
   }
   const fileSearch = (keyword) => {
-    const newFiles = files.filter(file => file.title.includes(keyword))
+    const newFiles = filesArr.filter(file => file.title.includes(keyword))
     setSearchedFiles(newFiles)
   }
 
@@ -74,8 +80,8 @@ function App() {
    */
   const fileChange = (id, val) => {
     // loop files find a file that file.id equal id and update the file body
-    const newFiles = updateArrayItemById(files, id, {body: val})
-    setFiles(newFiles)
+    const newFile = {...files[id], body: val}
+    setFiles({...files, [id]: newFile})
     // update unSaveIDs
     if (!unSaveFilesIDs.includes(id)) {
       setUnSaveFilesIDs([...unSaveFilesIDs, id])
@@ -84,25 +90,23 @@ function App() {
 
   const createNewFile = () => {
     const newID = uuidv4()
-    const newFiles = [
-      ...files, {
-        id: newID,
-        title: '',
-        body: '## 请输入MarkDown格式文件',
-        createAt: new Date().getTime(),
-        isNew: true
-      }
-    ]
-    setFiles(newFiles)
+    const newFile =  {
+      id: newID,
+      title: '',
+      body: '## 请输入MarkDown格式文件',
+      createAt: new Date().getTime(),
+      isNew: true
+    }
+    setFiles({...files, [newID]: newFile})
   }
 
   /**
    * 根据state的值生成相应file
    */
   const openedFiles = openedFileIDs.map(openID => {
-    return files.find(file => file.id === openID)
+    return files[openID]
   })
-  const activeFile = files.find(file => file.id === activeFileID)
+  const activeFile = files[activeFileID]
 
   return (
     <div className="App container-fluid px-0">
@@ -111,7 +115,7 @@ function App() {
           <FileSearch title="我的云文档" onFileSearch={fileSearch} />
           <FileList
             // files={files}
-            files={searchedFiles.length > 0 ? searchedFiles : files}
+            files={searchedFiles.length > 0 ? searchedFiles : filesArr}
             onFileClick={fileClick}
             onFileDelete={fileDelete}
             onSaveEdit={updateFileName}
