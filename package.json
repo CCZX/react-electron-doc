@@ -13,6 +13,7 @@
     "classnames": "^2.2.6",
     "electron": "^7.1.6",
     "electron-is-dev": "^1.1.0",
+    "electron-store": "^5.1.0",
     "react": "^16.8.6",
     "react-dom": "^16.8.6",
     "react-scripts": "3.0.1",
@@ -45,6 +46,7 @@
   "devDependencies": {
     "concurrently": "^5.0.2",
     "cross-env": "^6.0.3",
+    "devtron": "^1.4.0",
     "node-sass": "^4.13.0",
     "sass-loader": "^8.0.0",
     "wait-on": "^3.3.0"

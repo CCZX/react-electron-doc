@@ -22,13 +22,14 @@ function FileList({files, onFileClick, onFileDelete, onSaveEdit}) {
 
   useEffect(() => {
     const editItem = files.find(file => file.id === editStatus)
+    console.log('editItem', editItem)
     if (enterPressed && editStatus && value.trim() !== '') {
-      if (editItem.isNew) {
-        onFileClick(editItem.id)
-      }
-      onSaveEdit(editStatus, value)
+      onSaveEdit(editStatus, value, editItem.isNew)
       setEditStatus(false)
       setValue('')
+      // if (editItem.isNew) {
+      //   onFileClick(editItem.id)
+      // }
     }
     if (escPressed && editStatus) {
       closeSearch(editItem)

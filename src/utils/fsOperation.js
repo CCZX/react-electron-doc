@@ -1,5 +1,4 @@
 const fs = window.require('fs').promises
-const path = window.require('path')
 
 const fileHelper = {
   readFile(path) {
@@ -8,8 +7,9 @@ const fileHelper = {
   writeFile(path, content) {
     return fs.writeFile(path, content, {encoding: 'utf8'})
   },
-  renameFile(path, val) {
-    return fs.rename(path, val)
+  renameFile(path, newPath) {
+    console.log(path, newPath)
+    return fs.rename(path, newPath)
   },
   deleteFile(path) {
     return fs.unlink(path)
