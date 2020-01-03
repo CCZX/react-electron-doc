@@ -47,7 +47,6 @@ function App() {
   const fileClick = (fileID) => {
     // set currentActivefiel
     setActiveFileID(fileID)
-    console.log(fileID)
     // if openedFileIDs not inclueds fileID then add new fileID to openFileIDs
     // setOpenedFileIDs(Array.from(new Set([...openedFileIDs, fileID])))
     if (!openedFileIDs.includes(fileID)) {
@@ -57,20 +56,12 @@ function App() {
   // handle file list item onDelete
   const fileDelete = (fileID) => {
     const newFiles = files.filter(file => file.id !== fileID)
-    console.log(newFiles)
     setFiles(newFiles)
     // close tab if opened
     tabClose(fileID)
   }
   const updateFileName = (fileID, title) => {
-    // const newFiles = updateArrayItemById(files, fileID, 'title', title)
-    const newFiles = files.map(file => {
-      if (file.id === fileID) {
-        file.title = title
-        file.isNew = false
-      }
-      return file
-    })
+    const newFiles = updateArrayItemById(files, fileID, {title: title, isNew: false})
     setFiles(newFiles)
   }
   const fileSearch = (keyword) => {
@@ -83,7 +74,7 @@ function App() {
    */
   const fileChange = (id, val) => {
     // loop files find a file that file.id equal id and update the file body
-    const newFiles = updateArrayItemById(files, id, 'body', val)
+    const newFiles = updateArrayItemById(files, id, {body: val})
     setFiles(newFiles)
     // update unSaveIDs
     if (!unSaveFilesIDs.includes(id)) {
@@ -94,8 +85,7 @@ function App() {
   const createNewFile = () => {
     const newID = uuidv4()
     const newFiles = [
-      ...files,
-      {
+      ...files, {
         id: newID,
         title: '',
         body: '## 请输入MarkDown格式文件',
@@ -151,9 +141,6 @@ function App() {
                 key={activeFile && activeFile.id}
                 value={activeFile && activeFile.body}
                 onChange={val => fileChange(activeFile.id, val)}
-                // options={{
-                //   minHeight: '100vh'
-                // }}
               />
             </>
           }
