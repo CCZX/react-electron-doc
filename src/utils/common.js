@@ -37,3 +37,19 @@ export const hashMapToArr = (hashMap) => {
   return keys.map(key => hashMap[key])
 }
 
+/**
+ * 
+ * @param {Element} node 
+ * @param {String} parentClassName 
+ */
+export const getParentNode = (node, parentClassName) => {
+  let cur = node
+  while (cur !== null) {
+    if(cur.classList.contains(parentClassName)) {
+      return cur
+    }
+    cur = cur.parentNode
+  }
+  return false
+}
+

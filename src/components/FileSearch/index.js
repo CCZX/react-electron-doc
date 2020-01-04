@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faSearch, faTimes } from '@fortawesome/free-solid-svg-icons'
 import useKeyPress from './../../hooks/useKeyPress'
 import './index.scss'
+import useIpcRenderer from './../../hooks/useIpcRenderer'
 
 function FileSearch({title, onFileSearch}) {
   const [inputActive, setInputActive] = useState(false)
@@ -39,6 +40,11 @@ function FileSearch({title, onFileSearch}) {
   //     document.removeEventListener('click', hiddenInp)
   //   }
   // })
+  useIpcRenderer({
+    'search-file'() {
+      setInputActive(true)
+    }
+  })
   return (
     <div className="wrapper alert alert-primary d-flex justify-content-between align-items-center mb-0">
       {
@@ -59,6 +65,7 @@ function FileSearch({title, onFileSearch}) {
             value={value}
             onChange={(e) => setValue(e.target.value)}
             ref={inpRef}
+            onBlur={closeSearch}
           />
           <button
             type="button"

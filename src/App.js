@@ -1,4 +1,4 @@
-import React, {useState} from 'react'
+import React, { useState } from 'react'
 import { faPlus, faFileImport, faSave } from '@fortawesome/free-solid-svg-icons'
 import SimpleMDE from 'react-simplemde-editor'
 import uuidv4 from 'uuid/v4'
@@ -11,9 +11,10 @@ import BottomBtn from './components/BottomBtn'
 import TabList from './components/TabList'
 import { hashMapToArr, flatArr } from './utils/common'
 import fileHelper from './utils/fsOperation'
+import useIpcRenderer from './hooks/useIpcRenderer'
 
 const { join, basename, extname, dirname } = window.require('path')
-const { remote } = window.require('electron')
+const { remote, ipcRenderer } = window.require('electron')
 const Store = window.require('electron-store')
 const fileStore = new Store({'name': 'Files Data'})
 const settingsStore = new Store({name: 'Settings'})
@@ -28,7 +29,7 @@ const saveFilesToStore = (files) => {
   fileStore.set('files', filesStoreObj)
 }
 function App() {
-  const [files, setFiles] = useState(fileStore.get('files') || {}) // [{}, {}]
+  const [files, setFiles] = useState(fileStore.get('files') || {}) // {1:{}, 2:{}}
   const [activeFileID, setActiveFileID] = useState('')
   const [openedFileIDs, setOpenedFileIDs] = useState([])
   const [unSaveFilesIDs, setUnSaveFilesIDs] =useState([])
@@ -126,6 +127,9 @@ function App() {
    * file change
    */
   const fileChange = (id, val) => {
+    if (val === files[id].body) {
+      return
+    }
     // loop files find a file that file.id equal id and update the file body
     const newFile = {...files[id], body: val}
     setFiles({...files, [id]: newFile})
@@ -135,6 +139,8 @@ function App() {
     }
   }
 
+  // 这并不是真正意义上的新建文件，这一步只是把新的文件放入State之中，
+  // 在输入文件名点击保存（即调用了updateFileName方法）之后才会创建真正的新文件
   const createNewFile = () => {
     const newID = uuidv4()
     const newFile =  {
@@ -193,6 +199,12 @@ function App() {
     })
   }
 
+  useIpcRenderer({
+    'create-new-file': createNewFile,
+    'import-file': importFiles,
+    'save-edit-file': saveCurrentFile
+  })
+
   return (
     <div className="App container-fluid px-0">
       <div className="row no-gutters">
@@ -231,7 +243,6 @@ function App() {
                 value={activeFile && activeFile.body}
                 onChange={val => fileChange(activeFile.id, val)}
               />
-              <BottomBtn text="保存" colorClass="btn-success" icon={faSave} handleClick={saveCurrentFile} />
             </>
           }
         </div>
