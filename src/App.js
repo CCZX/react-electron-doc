@@ -9,10 +9,10 @@ import FileSearch from './components/FileSearch'
 import FileList from './components/FileList'
 import BottomBtn from './components/BottomBtn'
 import TabList from './components/TabList'
-import { hashMapToArr } from './utils/common'
+import { hashMapToArr, flatArr } from './utils/common'
 import fileHelper from './utils/fsOperation'
 
-const { join } = window.require('path')
+const { join, basename, extname, dirname } = window.require('path')
 const { remote } = window.require('electron')
 const Store = window.require('electron-store')
 const fileStore = new Store({'name': 'Files Data'})
@@ -27,7 +27,6 @@ const saveFilesToStore = (files) => {
   }, {})
   fileStore.set('files', filesStoreObj)
 }
-console.log(fileStore.path)
 function App() {
   const [files, setFiles] = useState(fileStore.get('files') || {}) // [{}, {}]
   const [activeFileID, setActiveFileID] = useState('')
@@ -36,6 +35,13 @@ function App() {
   const [searchedFiles, setSearchedFiles] = useState([]) // represent searched files to avoid conflict whit global files
   const filesArr = hashMapToArr(files)
   const savedLocation = remote.app.getPath('documents')
+  /**
+   * 根据state的值生成相应file
+   */
+  const openedFiles = openedFileIDs.map(openID => {
+    return files[openID]
+  })
+  const activeFile = files[activeFileID]
 
   /**
    * tab list handle function
@@ -93,7 +99,8 @@ function App() {
     }
   }
   const updateFileName = (fileID, title, isNew) => {
-    const newPath = join(savedLocation, `${title}.md`)
+    // 判断是否是新建文件，如果是新建文件就保存在documents文件夹里面，否则就在该文件原来的基础上修改
+    const newPath = isNew ? join(savedLocation, `${title}.md`) : join(dirname(files[fileID].path), `${title}.md`)
     const modifiedFile = {...files[fileID], title, isNew: false, path: newPath}
     const newFiles = {...files, [fileID]: modifiedFile}
     if (isNew) {
@@ -103,7 +110,7 @@ function App() {
         setActiveFileID(fileID)
       })
     } else {
-      const oldPath = join(savedLocation, `${files[fileID].title}.md`)
+      const oldPath = files[fileID].path
       fileHelper.renameFile(oldPath, newPath).then(() => {
         setFiles(newFiles)
         saveFilesToStore(newFiles)
@@ -142,18 +149,49 @@ function App() {
   }
 
   const saveCurrentFile = () => {
-    fileHelper.writeFile(join(savedLocation, `${activeFile.title}.md`), activeFile.body).then(() => {
+    fileHelper.writeFile(activeFile.path, activeFile.body).then(() => {
       setUnSaveFilesIDs(unSaveFilesIDs.filter(id => id !== activeFile.id))
     })
   }
 
-  /**
-   * 根据state的值生成相应file
-   */
-  const openedFiles = openedFileIDs.map(openID => {
-    return files[openID]
-  })
-  const activeFile = files[activeFileID]
+  const importFiles = () => {
+    const { dialog } = remote
+    dialog.showOpenDialog({
+      title: '选择导入的markdown文件',
+      filters: [
+        {name: 'Markdown files', extensions: ['md']}
+      ],
+      properties: ['openFile', 'multiSelections']
+    }).then(res => {
+      const { canceled, filePaths } = res
+      if (!canceled) {
+        // ['/path/234.md', '/path/123.md']
+        const noAddedPaths = filePaths.filter(path => {
+          const isAdded = Object.values(files).find(file => {
+            return path === file.path
+          })
+          return !isAdded
+        })
+        const importFilesArr = noAddedPaths.map(path => {
+          return {
+            id: uuidv4(),
+            title: basename(path, extname(path)),
+            path
+          }
+        })
+        const newFiles = {...files, ...flatArr(importFilesArr)}
+        setFiles(newFiles)
+        saveFilesToStore(newFiles)
+        if (importFilesArr.length > 0) {
+          dialog.showMessageBox({
+            type: 'info',
+            title: `导入文件成功`,
+            message: `成功导入${importFilesArr.length}了个文件`
+          })
+        }
+      }
+    })
+  }
 
   return (
     <div className="App container-fluid px-0">
@@ -172,7 +210,7 @@ function App() {
               <BottomBtn text="新建" colorClass="btn-primary" icon={faPlus} handleClick={createNewFile} />
             </div>
             <div className="col">
-              <BottomBtn text="导入" colorClass="btn-success" icon={faFileImport} handleClick={() => {}} />
+              <BottomBtn text="导入" colorClass="btn-success" icon={faFileImport} handleClick={importFiles} />
             </div>
           </div>
         </div>
@@ -193,7 +231,7 @@ function App() {
                 value={activeFile && activeFile.body}
                 onChange={val => fileChange(activeFile.id, val)}
               />
-              <BottomBtn text="导入" colorClass="btn-success" icon={faSave} handleClick={saveCurrentFile} />
+              <BottomBtn text="保存" colorClass="btn-success" icon={faSave} handleClick={saveCurrentFile} />
             </>
           }
         </div>
