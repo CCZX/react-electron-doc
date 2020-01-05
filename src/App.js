@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { faPlus, faFileImport, faSave } from '@fortawesome/free-solid-svg-icons'
+import { faPlus, faFileImport } from '@fortawesome/free-solid-svg-icons'
 import SimpleMDE from 'react-simplemde-editor'
 import uuidv4 from 'uuid/v4'
 import './App.scss'
@@ -9,7 +9,7 @@ import FileSearch from './components/FileSearch'
 import FileList from './components/FileList'
 import BottomBtn from './components/BottomBtn'
 import TabList from './components/TabList'
-import { hashMapToArr, flatArr } from './utils/common'
+import { hashMapToArr, flatArr, timestampToString } from './utils/common'
 import fileHelper from './utils/fsOperation'
 import useIpcRenderer from './hooks/useIpcRenderer'
 
@@ -17,7 +17,7 @@ const { join, basename, extname, dirname } = window.require('path')
 const { remote, ipcRenderer } = window.require('electron')
 const Store = window.require('electron-store')
 const fileStore = new Store({'name': 'Files Data'})
-const settingsStore = new Store({name: 'Settings'})
+const settingsStore = new Store({'name': 'Settings'})
 const getAutoSync = () => ['accessKey', 'secretKey', 'bucketName', 'enableAutoSync'].every(key => !!settingsStore.get(key))
 const saveFilesToStore = (files) => {
   // we don't have to store any info in file system, eg: isNew, body ,etc
@@ -35,7 +35,7 @@ function App() {
   const [unSaveFilesIDs, setUnSaveFilesIDs] =useState([])
   const [searchedFiles, setSearchedFiles] = useState([]) // represent searched files to avoid conflict whit global files
   const filesArr = hashMapToArr(files)
-  const savedLocation = remote.app.getPath('documents')
+  const savedLocation = settingsStore.get('savedFileLocaltion') || remote.app.getPath('documents')
   /**
    * 根据state的值生成相应file
    */
@@ -155,11 +155,16 @@ function App() {
   }
 
   const saveCurrentFile = () => {
+    const { path, body, title } = activeFile
     fileHelper.writeFile(activeFile.path, activeFile.body).then(() => {
       setUnSaveFilesIDs(unSaveFilesIDs.filter(id => id !== activeFile.id))
+      if (getAutoSync()) {
+        ipcRenderer.send('upload-file', {key: `${title}.md`, path})
+      }
     })
   }
 
+  // 导入文件
   const importFiles = () => {
     const { dialog } = remote
     dialog.showOpenDialog({
@@ -199,10 +204,19 @@ function App() {
     })
   }
 
+  // 上传问价之后更新问价状态
+  const activeFileUploaded = () => {
+    const modifiedFile = {...files[activeFileID], isSynced: true, updatedAt: Date.now()}
+    const newFiles = {...files, [activeFileID]: modifiedFile}
+    setFiles(newFiles)
+    saveFilesToStore(newFiles)
+  }
+
   useIpcRenderer({
     'create-new-file': createNewFile,
     'import-file': importFiles,
-    'save-edit-file': saveCurrentFile
+    'save-edit-file': saveCurrentFile,
+    'active-file-uploaded': activeFileUploaded
   })
 
   return (
@@ -243,6 +257,9 @@ function App() {
                 value={activeFile && activeFile.body}
                 onChange={val => fileChange(activeFile.id, val)}
               />
+              { activeFile.isSynced && 
+                <span className="sync-status">已同步，上次同步{timestampToString(activeFile.updatedAt)}</span>
+              }
             </>
           }
         </div>
