@@ -98,6 +98,16 @@ class QiniuManager {
   }
 
   /**
+   * 查看云空间是否存在该文件
+   * @param {String} key 文件在云空间的名字
+   */
+  getState(key) {
+    return new Promise((resolve, reject) => {
+      this.bucketManager.stat(this.bucket, key, this._handleCb(resolve, reject))
+    })
+  }
+
+  /**
    * callback处理统一函数
    * @param {Function} resolve promise resolve
    * @param {Function} reject promise reject
