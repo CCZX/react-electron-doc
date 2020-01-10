@@ -23,7 +23,7 @@ const TabList = ({files, activeId, unSaveIds, handleTabClick, handleTabClose}) =
                 className={fclassNames}
                 onClick={(e) => {e.preventDefault(); handleTabClick(file.id)}}
               >
-                {file.title}
+                {file.title}.md
                 <span
                   className="ml-2 close-icon"
                   onClick={(e) => {e.stopPropagation(); handleTabClose(file.id)}}

@@ -5,9 +5,10 @@ const menuTemplate = require('./src/menuTemplate')
 const AppWindow = require('./src/appWindow')
 const Store = require('electron-store')
 const settingsStore = new Store({ name: 'Settings'})
+const fileStore = new Store({'name': 'Files Data'})
 const QiniuManager = require('./src/utils/qiniu')
 
-const qiniuIsConfiged = ['accessKey', 'secretKey', 'bucketName'].every(key => !!settingsStore.get(key))
+const qiniuIsConfiged = () => ['accessKey', 'secretKey', 'bucketName'].every(key => !!settingsStore.get(key))
 const createQiniuManager = () => {
   const accessKey = settingsStore.get('accessKey')
   const secretKey = settingsStore.get('secretKey')
@@ -46,20 +47,23 @@ app.on('ready', () => {
     settingsWindow.on('closed', () => {
       settingsWindow = null
     })
-
-    // 在保存七牛云的配置后动态的改变菜单栏的属性
-    ipcMain.on('confing-is-saved', () => {
-      let qiniuMenu = process.platform === 'darwin' ? menu.items[3] : menu.items[2]
-      const toggleItems = (toggle) => {
-        [1, 2, 3].forEach(item => {
-          qiniuMenu.submenu.items[item].enabled = toggle
-        })
-      }
-      toggleItems(!!qiniuIsConfiged)
-    })
   })
 
-  // 
+  // 在保存七牛云的配置后动态的改变菜单栏的属性
+  ipcMain.on('config-is-saved', () => {
+    const enableAutoSync = settingsStore.get('enableAutoSync')
+    const flag = !enableAutoSync
+    settingsStore.set('enableAutoSync', flag)
+    let qiniuMenu = process.platform === 'darwin' ? menu.items[3] : menu.items[2]
+    const toggleItems = (toggle) => {
+      [1, 2, 3].forEach(item => {
+        qiniuMenu.submenu.items[item].enabled = toggle
+      })
+    }
+    toggleItems(!!qiniuIsConfiged())
+  })
+
+  // 上传文件到云空间
   ipcMain.on('upload-file', (e, data) => {
     const manager = createQiniuManager()
     const { key, path } = data
@@ -70,4 +74,29 @@ app.on('ready', () => {
       dialog.showErrorBox('同步失败', '请检查七牛云参数或者网络是否正确！')
     })
   })
+
+  // 从云空间下载文件
+  ipcMain.on('download-file', (e, data) => {
+    const manager = createQiniuManager()
+    const files = fileStore.get('files')
+    const { id, key, path } = data
+    manager.getState(data.key).then(res => {
+      const { putTime } = res
+      const serverUpTime = Math.round(putTime / 10000)
+      const localUpTime = files[id].updatedAt
+      if (serverUpTime > localUpTime || !localUpTime) {
+        manager.downLoadFile(key, path).then(() => {
+          mainWindow.webContents.send('file-downloaded', {status: 'success', id})
+        })
+      } else {
+        mainWindow.webContents.send('file-downloaded', {status: 'no new file', id})
+      }
+    }, err => {
+      if (err.status === 612) {
+        mainWindow.webContents.send('file-downloaded', {status: 'no such file', id})
+      }
+    })
+  })
+
+
 })

@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     })
     // send event to main process to refres that emnu item of rely on qiniu cnfig
-    ipcRenderer.send('confing-is-saved')
+    ipcRenderer.send('config-is-saved')
     remote.getCurrentWindow().close()
   })
   $('.nav-tabs').addEventListener('click', (e) => {

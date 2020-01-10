@@ -22,8 +22,8 @@ const getAutoSync = () => ['accessKey', 'secretKey', 'bucketName', 'enableAutoSy
 const saveFilesToStore = (files) => {
   // we don't have to store any info in file system, eg: isNew, body ,etc
   const filesStoreObj = hashMapToArr(files).reduce((result, file) => {
-    const { id, path, title, createdAt, isSynced, updatedAt } = file
-    result[id] = { id, path, title, createdAt, isSynced, updatedAt }
+    const { id, path, title, createdAt, isSynced, updatedAt, isNew, lastModify, isSaved } = file
+    result[id] = { id, path, title, createdAt, isSynced, updatedAt, isNew, lastModify, isSaved }
     return result
   }, {})
   fileStore.set('files', filesStoreObj)
@@ -53,15 +53,38 @@ function App() {
   }
   // handle tab list item close
   const tabClose = (fileID) => {
-    // remove current fileid from openedfiledids
-    const newopenedFileIDs = openedFileIDs.filter(id => fileID !== id)
-    setOpenedFileIDs(newopenedFileIDs)
-    if (activeFileID === fileID) {
-      if (newopenedFileIDs.length > 0) {
-        setActiveFileID(newopenedFileIDs[0])
-      } else {
-        setActiveFileID('')
+    const id = fileID
+    const { dialog } = remote
+    const deleteFn = () => {
+      const closeFile = {...files[id], isLoaded: false}
+      setFiles({...files, [id]: closeFile})
+      const newUnsavedIds = unSaveFilesIDs.filter(id => fileID !== id)
+      setUnSaveFilesIDs(newUnsavedIds)
+      const newopenedFileIDs = openedFileIDs.filter(id => fileID !== id)
+      setOpenedFileIDs(newopenedFileIDs)
+      if (activeFileID === fileID) {
+        if (newopenedFileIDs.length > 0) {
+          setActiveFileID(newopenedFileIDs[0])
+        } else {
+          setActiveFileID('')
+        }
       }
+    }
+    if (!files[id].isSaved) {
+      dialog.showMessageBox({
+        type: 'info',
+        title: 'Tips',
+        message: `${files[id].title}.md文件还未保存确认删除？`,
+        buttons: ['ok', 'no'],
+        defaultId: 1,
+        cancelId: 1
+      }).then(res => {
+        if (res.response === 0) {
+          deleteFn()
+        }
+      })
+    } else {
+      deleteFn()
     }
   }
 
@@ -73,11 +96,19 @@ function App() {
     // set currentActivefiel
     setActiveFileID(fileID)
     const curFile = files[fileID]
-    if (!curFile.isLoaded) {
-      fileHelper.readFile(curFile.path).then(res => {
-        const newFile = {...files[fileID], body: res, isLoaded: true}
-        setFiles({...files, [fileID]: newFile})
-      })
+    const { id, title, path, isLoaded } = curFile
+    if (!isLoaded) {
+      if (getAutoSync()) {
+        console.log(getAutoSync())
+        ipcRenderer.send('download-file', { key: `${title}.md`, path, id })
+      } else {
+        console.log(curFile.path)
+        fileHelper.readFile(curFile.path).then(res => {
+          const newFile = {...files[fileID], body: res, isLoaded: true}
+          const temp = JSON.parse(JSON.stringify(files))
+          setFiles({...temp, [fileID]: newFile})
+        })
+      }
     }
     // if openedFileIDs not inclueds fileID then add new fileID to openFileIDs
     if (!openedFileIDs.includes(fileID)) {
@@ -86,23 +117,26 @@ function App() {
   }
   // handle file list item onDelete
   const fileDelete = (fileID) => {
+    const id = fileID
     if (files[fileID].isNew) {
       const {[fileID]: value, ...newFiles} = files
       setFiles(newFiles)
     } else {
-      fileHelper.deleteFile(files[fileID].path).then(() => {
+      const isDel = window.confirm(`确认删除 ${files[id].title}.md 文件？`)
+      isDel && fileHelper.deleteFile(files[fileID].path).then(() => {
         const {[fileID]: value, ...newFiles} = files
         setFiles(newFiles)
-        saveFilesToStore(files)
+        saveFilesToStore(newFiles)
         // close tab if opened
         tabClose(fileID)
       })
     }
   }
   const updateFileName = (fileID, title, isNew) => {
-    // 判断是否是新建文件，如果是新建文件就保存在documents文件夹里面，否则就在该文件原来的基础上修改
+    // 判断是否是新建文件，如果是新建文件就保存在设置的保存文件的文件夹里面，否则就在该文件原来的基础上修改
     const newPath = isNew ? join(savedLocation, `${title}.md`) : join(dirname(files[fileID].path), `${title}.md`)
-    const modifiedFile = {...files[fileID], title, isNew: false, path: newPath}
+    // 修改文件的信息
+    const modifiedFile = {...files[fileID], title, isNew: false, path: newPath, lastModify: Date.now()}
     const newFiles = {...files, [fileID]: modifiedFile}
     if (isNew) {
       fileHelper.writeFile(newPath, files[fileID].body).then(res => {
@@ -131,7 +165,7 @@ function App() {
       return
     }
     // loop files find a file that file.id equal id and update the file body
-    const newFile = {...files[id], body: val}
+    const newFile = {...files[id], body: val, lastModify: Date.now(), isSynced: false, isSaved: false}
     setFiles({...files, [id]: newFile})
     // update unSaveIDs
     if (!unSaveFilesIDs.includes(id)) {
@@ -147,8 +181,12 @@ function App() {
       id: newID,
       title: '',
       body: '## 请输入MarkDown格式文件',
-      createAt: new Date().getTime(),
-      isNew: true
+      createdAt: Date.now(),
+      isNew: true,
+      isSynced: false,
+      updatedAt: Date.now(),
+      lastModify: Date.now(),
+      isSaved: false
     }
     setFiles({...files, [newID]: newFile})
     // setActiveFileID(newID)
@@ -158,6 +196,7 @@ function App() {
     const { path, body, title } = activeFile
     fileHelper.writeFile(activeFile.path, activeFile.body).then(() => {
       setUnSaveFilesIDs(unSaveFilesIDs.filter(id => id !== activeFile.id))
+      console.log(getAutoSync())
       if (getAutoSync()) {
         ipcRenderer.send('upload-file', {key: `${title}.md`, path})
       }
@@ -187,12 +226,22 @@ function App() {
           return {
             id: uuidv4(),
             title: basename(path, extname(path)),
-            path
+            path,
+            isNew: false,
+            isSynced: false,
+            updatedAt: Date.now(),
+            lastModify: Date.now(),
+            isSaved: true
           }
         })
-        const newFiles = {...files, ...flatArr(importFilesArr)}
+        // const newFiles = {...files, ...flatArr(importFilesArr)}
+        const temp = JSON.parse(JSON.stringify(files))
+        // const newFiles = Object.assign(files, flatArr(importFilesArr))
+        const newFiles = {...temp, ...flatArr(importFilesArr)}
+        console.log(newFiles)
         setFiles(newFiles)
         saveFilesToStore(newFiles)
+        console.log(files)
         if (importFilesArr.length > 0) {
           dialog.showMessageBox({
             type: 'info',
@@ -204,7 +253,7 @@ function App() {
     })
   }
 
-  // 上传问价之后更新问价状态
+  // 上传文件到七牛云之后更新文件状态
   const activeFileUploaded = () => {
     const modifiedFile = {...files[activeFileID], isSynced: true, updatedAt: Date.now()}
     const newFiles = {...files, [activeFileID]: modifiedFile}
@@ -212,11 +261,31 @@ function App() {
     saveFilesToStore(newFiles)
   }
 
+  // 从云空间同步后的操作，同步新内容或者没有新内容
+  const activeFileDownloaded = (event, msg) => {
+    const { status } = msg
+    const currentFile = files[msg.id]
+    const { id, path } = currentFile
+    fileHelper.readFile(path).then(val => {
+      let newFile
+      if (status === 'success') {
+        newFile = { ...files[id], body: val, isLoaded: true, isSynced: true, updatedAt: Date.now() }
+      } else {
+        newFile = { ...files[id], body: val, isLoaded: true}
+      }
+      const temp = JSON.parse(JSON.stringify(files))
+      const newFiles = {...temp, [id]: newFile}
+      setFiles(newFiles)
+      saveFilesToStore(newFiles)
+    })
+  }
+
   useIpcRenderer({
     'create-new-file': createNewFile,
     'import-file': importFiles,
     'save-edit-file': saveCurrentFile,
-    'active-file-uploaded': activeFileUploaded
+    'active-file-uploaded': activeFileUploaded,
+    'file-downloaded': activeFileDownloaded
   })
 
   return (
@@ -257,9 +326,14 @@ function App() {
                 value={activeFile && activeFile.body}
                 onChange={val => fileChange(activeFile.id, val)}
               />
-              { activeFile.isSynced && 
-                <span className="sync-status">已同步，上次同步{timestampToString(activeFile.updatedAt)}</span>
+              { activeFile.updatedAt ? 
+                <span>
+                  <span className="sync-status">
+                    { activeFile.isSynced ? '已同步' : '未同步' }，上次同步时间：{timestampToString(activeFile.updatedAt)}
+                  </span>
+                </span> : <span>从未同步</span>
               }
+              <span className="modify-status">上次修改时间：{timestampToString(activeFile.lastModify)}</span>
             </>
           }
         </div>

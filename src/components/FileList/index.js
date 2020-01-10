@@ -6,6 +6,7 @@ import { faMarkdown } from '@fortawesome/free-brands-svg-icons'
 import useKeyPressed from './../../hooks/useKeyPress'
 import useContextMenu from './../../hooks/useContextmenu'
 import { getParentNode } from './../../utils/common'
+import './index.scss'
 
 const { remote } = window.require('electron')
 const { Menu, MenuItem } = remote
@@ -48,7 +49,13 @@ function FileList({files, onFileClick, onFileDelete, onSaveEdit}) {
       }
     }),
     new MenuItem({
-      label: '删除'
+      label: '删除',
+      click() {
+        const parentNode = getParentNode(clickedItem.current, 'file-item')
+        if (parentNode) {
+          onFileDelete(parentNode.dataset.id)
+        }
+      }
     })
   ], '.file-list', files)
 
@@ -99,36 +106,16 @@ function FileList({files, onFileClick, onFileDelete, onSaveEdit}) {
                     onChange={(e) => setValue(e.target.value)}
                     onBlur={() => closeSearch(file)}
                   />
-                  {/* <button
-                    type="button"
-                    className="icon-btn col-2"
-                    onClick={() => closeSearch(file)}
-                  >
-                    <FontAwesomeIcon title="关闭" icon={faTimes} />
-                  </button> */}
                 </>
               ) : (
                 <>
-                  <span className="col-2 p-0 ">
+                  <span className="col-2 p-0">
                     <FontAwesomeIcon size="lg" icon={faMarkdown} />
                   </span>
-                  <span className="col-6 c-link"
+                  <span className="col-10 pl-2 c-link file-title"
                     onClick={() => {onFileClick(file.id)}}
-                  >{file.title}</span>
-                  {/* <button
-                    type="button"
-                    className="icon-btn col-2"
-                    onClick={() => {setEditStatus(file.id); setValue(file.title)}}
-                  >
-                    <FontAwesomeIcon title="编辑" icon={faEdit} />
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-btn col-2"
-                    onClick={() => {onFileDelete(file.id)}}
-                  >
-                    <FontAwesomeIcon title="删除" icon={faTrash} />
-                  </button> */}
+                    title={file.title+'.md'}
+                  >{file.title}.md</span>
                 </>
               )
             }

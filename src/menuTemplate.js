@@ -77,8 +77,8 @@ let template = [{
     type: 'checkbox',
     enabled: qiniuIsConfiged,
     checked: enableAutoSync,
-    click: () => {
-      settingsStore.set('enableAutoSync', !enableAutoSync)
+    click: (menuItem, browserWindow, event) => {
+      ipcMain.emit('config-is-saved')
     }
   }, {
     label: '全部同步至云端',
