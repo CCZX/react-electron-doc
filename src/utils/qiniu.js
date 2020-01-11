@@ -2,13 +2,26 @@ const qiniu = require('qiniu')
 const fs = require('fs')
 const axios = require('axios')
 
+const ZoneMap = {
+  '华东':	qiniu.zone.Zone_z0,
+  '华北':	qiniu.zone.Zone_z1,
+  '华南':	qiniu.zone.Zone_z2,
+  '北美':	qiniu.zone.Zone_na0
+}
+
 class QiniuManager {
-  constructor(accessKey, secretKey, bucket) {
+  /**
+   * constructor
+   * @param {String} accessKey 七牛云公钥
+   * @param {String} secretKey 七牛云私钥
+   * @param {String} bucket 空间
+   * @param {String} zone zone对象和机房的关系
+   */
+  constructor(accessKey, secretKey, bucket, zone = '华南') {
     this.mac = new qiniu.auth.digest.Mac(accessKey, secretKey)
     this.bucket = bucket
     this.config = new qiniu.conf.Config()
-    // 空间对应的机房
-    this.config.zone = qiniu.zone.Zone_z2
+    this.config.zone = ZoneMap[zone]
     this.bucketManager = new qiniu.rs.BucketManager(this.mac, this.config)
     this.publicDomain = ''
   }
@@ -20,7 +33,8 @@ class QiniuManager {
   uploadFile(key, localFilePath) {
     // generate uptoekn
     const options = {
-      scope: this.bucket + ':' + key // 如果有相同的就替换
+      // scope: this.bucket + ':' + key // 如果有相同的就替换
+      scope: `${this.bucket}:${key}` // 如果有相同的就替换
     }
     const putPloicy = new qiniu.rs.PutPolicy(options)
     const uploadToken = putPloicy.uploadToken(this.mac)
@@ -43,7 +57,7 @@ class QiniuManager {
   }
 
   /**
-   * 获取bucket下的存储链接🔗
+   * 获取bucket下的public存储链接🔗
    */
   getBucketDomain() {
     const reqURL = `http://api.qiniu.com/v6/domain/list?tbl=${this.bucket}`
@@ -54,7 +68,7 @@ class QiniuManager {
   }
 
   /**
-   * 生成需要下载文件二点链接🔗
+   * 生成需要下载文件的链接🔗
    * @param {String} key 需要下载文件的名字
    */
   getDownLoadLink(key) {
@@ -71,7 +85,7 @@ class QiniuManager {
   }
 
   /**
-   * 下载文件
+   * 从云空间下载文件
    * @param {String} key 云空间上的文件名称
    * @param {String} localPath 保存的本地地址
    */
@@ -93,7 +107,24 @@ class QiniuManager {
         })
       })
     }).catch(err => {
-      Promise.reject({err})
+      return Promise.reject({err})
+    })
+  }
+
+  /**
+   * 修改云空间文件名字，目前只支持在同一个bucket下修改
+   * @param {String} key 文件原来的名字
+   * @param {String} destKey 文件新的名字
+   * @param {Object} options 配置文件
+   */
+  moveFile(key, destKey, options = {force: true}) {
+    // 强制覆盖同名文件
+    // const options = {
+    //   force: true
+    // }
+    const bucket = this.bucket
+    return new Promise((resolve, reject) => {
+      this.bucketManager.move(bucket, key, bucket, destKey, options, this._handleCb(resolve, reject))
     })
   }
 
@@ -115,15 +146,16 @@ class QiniuManager {
   _handleCb(resolve, reject) {
     return (err, respBody, respInfo) => {
       if (err) {
-        throw err
-      }
-      if (respInfo.statusCode === 200) {
-        resolve(respBody)
+        reject(err)
       } else {
-        reject({
-          statusCode: respInfo.statusCode,
-          respBody: respBody
-        })
+        if (respInfo.statusCode === 200) {
+          resolve(respBody)
+        } else {
+          reject({
+            statusCode: respInfo.statusCode,
+            respBody: respBody
+          })
+        }
       }
     }
   }
