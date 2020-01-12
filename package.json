@@ -3,6 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "main": "main.js",
+  "description": "Online markdown editor useing qiniu cloud service",
+  "author": {
+    "name": "cauth",
+    "email": "ccdebuging@gmail.com"
+  },
+  "repository": "https://www.github.com/CCZX/cloud-doc",
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.26",
     "@fortawesome/free-brands-svg-icons": "^5.12.0",
@@ -28,7 +34,15 @@
     "eject": "react-scripts eject",
     "ele": "electron .",
     "onlyEle": "nodemon --watch main.js --watch src/menuTemplate.js --exec \"electron .\"",
-    "dev": "concurrently \"wait-on http://localhost:3000 && npm run ele\" \"cross-env BROWSER=none npm start\""
+    "dev": "concurrently \"wait-on http://localhost:3000 && npm run ele\" \"cross-env BROWSER=none npm start\"",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "prepack": "npm run build"
+  },
+  "build": {
+    "appId": "cloudEdit",
+    "productName": "云文档",
+    "copyright": "Copyright @ 2020 ${author}"
   },
   "eslintConfig": {
     "extends": "react-app"
