@@ -19,7 +19,7 @@ const createQiniuManager = () => {
 let mainWindow, settingsWindow
 
 app.on('ready', () => {
-  require('devtron').install()
+  // require('devtron').install()
   const mainWindowConfig = {
     width: 1024,
     height: 680,
@@ -30,7 +30,7 @@ app.on('ready', () => {
   mainWindow.on('closed', () => {
     mainWindow = null
   })
-  mainWindow.webContents.openDevTools()
+  // mainWindow.webContents.openDevTools()
   let menu = new Menu.buildFromTemplate(menuTemplate)
   Menu.setApplicationMenu(menu)
 
@@ -43,7 +43,7 @@ app.on('ready', () => {
     }
     const settingsFileLocation = `file://${path.join(__dirname, './settings/index.html')}`
     settingsWindow = new AppWindow(settingsWindowConfig, settingsFileLocation)
-    settingsWindow.webContents.openDevTools()
+    // settingsWindow.webContents.openDevTools()
     settingsWindow.removeMenu()
     settingsWindow.on('closed', () => {
       settingsWindow = null

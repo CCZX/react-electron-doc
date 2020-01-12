@@ -17,7 +17,6 @@
     "axios": "^0.19.0",
     "bootstrap": "^4.4.1",
     "classnames": "^2.2.6",
-    "electron": "^7.1.6",
     "electron-is-dev": "^1.1.0",
     "electron-store": "^5.1.0",
     "qiniu": "^7.3.0",
@@ -37,12 +36,68 @@
     "dev": "concurrently \"wait-on http://localhost:3000 && npm run ele\" \"cross-env BROWSER=none npm start\"",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "predist": "npm run build"
   },
+  "homepage": "./",
   "build": {
     "appId": "cloudEdit",
     "productName": "云文档",
-    "copyright": "Copyright @ 2020 ${author}"
+    "copyright": "Copyright @ 2020 ${author}",
+    "files": [
+      "build/**/*",
+      "node_modules/**/*",
+      "settings/**/*",
+      "package.json",
+      "main.js",
+      "./src/menuTemplate.js",
+      "./src/appWindow.js",
+      "./src/utils/qiniu.js"
+    ],
+    "directories": {
+      "buildResources": "assets"
+    },
+    "publish": ["github"],
+    "extends": null,
+    "mac": {
+      "category": "public.app-category.productivity",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "dmg": {
+      "background": "assets/appdmg.png",
+      "icon": "assets/icon.icns",
+      "iconSize": 100,
+      "contents": [
+        {
+          "x": 380,
+          "y": 280,
+          "type": "link",
+          "path": "/Applications"
+        },
+        {
+          "x": 110,
+          "y": 280,
+          "type": "file"
+        }
+      ],
+      "window": {
+        "width": 500,
+        "height": 500
+      }
+    },
+    "win": {
+      "target": [
+        "msi", "nsis"
+      ],
+      "icon": "assets/icon.ico",
+      "artifactName": "${productName}-Web-Setup-${version}.${ext}",
+      "publisherName": "cauth"
+    },
+    "nsis": {
+      "allowToChangeInstallationDirectory": true,
+      "oneClick": false,
+      "perMachine": false
+    }
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -63,6 +118,7 @@
     "concurrently": "^5.0.2",
     "cross-env": "^6.0.3",
     "devtron": "^1.4.0",
+    "electron": "^7.1.8",
     "electron-builder": "^21.2.0",
     "node-sass": "^4.13.0",
     "sass-loader": "^8.0.0",
