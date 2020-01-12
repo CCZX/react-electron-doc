@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog } = require('electron')
+const { app, Menu, ipcMain, dialog } = require('electron')
 const isDev = require('electron-is-dev')
 const path = require('path')
 const menuTemplate = require('./src/menuTemplate')
@@ -98,5 +98,27 @@ app.on('ready', () => {
     })
   })
 
+  ipcMain.on('upload-all-to-qiniu', () => {
+    mainWindow.webContents.send('loading-status', true)
+    const manager = createQiniuManager()
+    const files = fileStore.get('files') || {}
+    const uploadPromiseArr = Object.keys(files).map(key => {
+      const file = files[key]
+      return manager.uploadFile(`${file.title}.md`, file.path)
+    })
+    Promise.all(uploadPromiseArr).then(res => {
+      dialog.showMessageBox({
+        type: 'info',
+        message: `成功上传了${res.length}个文件`
+      })
+      mainWindow.webContents.send('files-uploaded')
+    }).catch(err => {
+      dialog.showErrorBox({
+        message: '同步失败'
+      })
+    }).finally(() => {
+      mainWindow.webContents.send('loading-status', false)
+    })
+  })
 
 })

@@ -9,6 +9,7 @@ import FileSearch from './components/FileSearch'
 import FileList from './components/FileList'
 import BottomBtn from './components/BottomBtn'
 import TabList from './components/TabList'
+import Loader from './components/Load'
 import { hashMapToArr, flatArr, timestampToString } from './utils/common'
 import fileHelper from './utils/fsOperation'
 import useIpcRenderer from './hooks/useIpcRenderer'
@@ -34,6 +35,7 @@ function App() {
   const [openedFileIDs, setOpenedFileIDs] = useState([])
   const [unSaveFilesIDs, setUnSaveFilesIDs] =useState([])
   const [searchedFiles, setSearchedFiles] = useState([]) // represent searched files to avoid conflict whit global files
+  const [isLoading, setIsLoading] = useState(false)
   const filesArr = hashMapToArr(files)
   const savedLocation = settingsStore.get('savedFileLocaltion') || remote.app.getPath('documents')
   /**
@@ -280,16 +282,35 @@ function App() {
     })
   }
 
+  const filesUploaded = (event, msg) => {
+    const newFiles = hashMapToArr(files).reduce((mul, cur) => {
+      const curTime = Date.now()
+      mul[cur.id] = {
+        ...files[cur.id],
+        isSynced: true,
+        updatedAt: curTime
+      }
+      return mul
+    }, {})
+    setFiles(newFiles)
+    saveFilesToStore(newFiles)
+  }
+
   useIpcRenderer({
     'create-new-file': createNewFile,
     'import-file': importFiles,
     'save-edit-file': saveCurrentFile,
     'active-file-uploaded': activeFileUploaded,
-    'file-downloaded': activeFileDownloaded
+    'file-downloaded': activeFileDownloaded,
+    'files-uploaded': filesUploaded,
+    'loading-status': (message, status) => {
+      setIsLoading(status)
+    }
   })
 
   return (
     <div className="App container-fluid px-0">
+      { isLoading && <Loader /> }
       <div className="row no-gutters">
         <div className="col-3 left-panel">
           <FileSearch title="我的云文档" onFileSearch={fileSearch} />
