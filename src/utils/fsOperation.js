@@ -8,7 +8,6 @@ const fileHelper = {
     return fs.writeFile(path, content, {encoding: 'utf8'})
   },
   renameFile(path, newPath) {
-    console.log(path, newPath)
     return fs.rename(path, newPath)
   },
   deleteFile(path) {

@@ -68,7 +68,6 @@ app.on('ready', () => {
     const manager = createQiniuManager()
     const { key, path } = data
     manager.uploadFile(key, path).then(res => {
-      console.log("success", res)
       mainWindow.webContents.send('active-file-uploaded')
     }).catch(err => {
       dialog.showErrorBox('同步失败', '请检查七牛云参数或者网络是否正确！')

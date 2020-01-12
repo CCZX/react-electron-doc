@@ -101,10 +101,8 @@ function App() {
     const { id, title, path, isLoaded } = curFile
     if (!isLoaded) {
       if (getAutoSync()) {
-        console.log(getAutoSync())
         ipcRenderer.send('download-file', { key: `${title}.md`, path, id })
       } else {
-        console.log(curFile.path)
         fileHelper.readFile(curFile.path).then(res => {
           const newFile = {...files[fileID], body: res, isLoaded: true}
           const temp = JSON.parse(JSON.stringify(files))
@@ -195,10 +193,9 @@ function App() {
   }
 
   const saveCurrentFile = () => {
-    const { path, body, title } = activeFile
+    const { path, title } = activeFile
     fileHelper.writeFile(activeFile.path, activeFile.body).then(() => {
       setUnSaveFilesIDs(unSaveFilesIDs.filter(id => id !== activeFile.id))
-      console.log(getAutoSync())
       if (getAutoSync()) {
         ipcRenderer.send('upload-file', {key: `${title}.md`, path})
       }
@@ -240,10 +237,8 @@ function App() {
         const temp = JSON.parse(JSON.stringify(files))
         // const newFiles = Object.assign(files, flatArr(importFilesArr))
         const newFiles = {...temp, ...flatArr(importFilesArr)}
-        console.log(newFiles)
         setFiles(newFiles)
         saveFilesToStore(newFiles)
-        console.log(files)
         if (importFilesArr.length > 0) {
           dialog.showMessageBox({
             type: 'info',
