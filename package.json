@@ -49,6 +49,7 @@
     "concurrently": "^5.0.2",
     "cross-env": "^6.0.3",
     "devtron": "^1.4.0",
+    "electron-builder": "^21.2.0",
     "node-sass": "^4.13.0",
     "sass-loader": "^8.0.0",
     "wait-on": "^3.3.0"
